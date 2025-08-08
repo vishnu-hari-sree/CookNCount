@@ -78,12 +78,10 @@ const App: React.FC = () => {
   }, []);
 
   // --- Audio Visualization & Whistle Detection ---
-
   const drawFrequency = () => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
-    const audioCtx = audioContextRef.current;
-    if (!canvas || !analyser || !audioCtx) return;
+    if (!canvas || !analyser) return;
 
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -92,26 +90,25 @@ const App: React.FC = () => {
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
 
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-    if (canvas.width !== width * devicePixelRatio || canvas.height !== height * devicePixelRatio) {
-      canvas.width = width * devicePixelRatio;
-      canvas.height = height * devicePixelRatio;
-      ctx.scale(devicePixelRatio, devicePixelRatio);
-    }
+    const { width, height } = canvas;
     ctx.clearRect(0, 0, width, height);
 
-    const barWidth = Math.max(1, width / bufferLength);
+    const barWidth = width / bufferLength;
     let x = 0;
+    
+    // Modern UI uses a different color
+    const barColor = isLightTheme ? '#0062ff' : '#4f8eff';
 
     for (let i = 0; i < bufferLength; i++) {
-      const v = dataArray[i] / 255;
-      const barHeight = v * height;
-      ctx.fillStyle = `rgba(60,120,180,${0.9 - v * 0.6})`;
-      ctx.fillRect(x, height - barHeight, barWidth, barHeight);
-      x += barWidth;
+        const v = dataArray[i] / 255.0;
+        const barHeight = v * height;
+        ctx.fillStyle = barColor;
+        // Rounded bars for a softer look
+        ctx.fillRect(x, height - barHeight, barWidth, barHeight); 
+        x += barWidth + 2; // Add spacing between bars
     }
   };
+
 
   const detectWhistle = () => {
     if (!analyserRef.current || !audioContextRef.current) return;
@@ -162,7 +159,6 @@ const App: React.FC = () => {
     if (isListening) return;
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      // FIX 1: Remove `(window as any)`
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       audioContextRef.current = new AudioCtx();
       analyserRef.current = audioContextRef.current.createAnalyser();
@@ -280,7 +276,7 @@ const App: React.FC = () => {
     setRecipeOutput('');
     setRecipeLoading(true);
     try {
-      const resp = await fetch('/api/ai-recipe', {
+      const resp = await fetch('http://localhost:3001/api/ai-recipe', { // Assuming local dev server
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -322,39 +318,38 @@ const App: React.FC = () => {
         return (
           <div className="feature-content">
             <h2>Whistle Counter</h2>
-            <p>Set a target and I'll listen for whistles (2–8 kHz).</p>
+            <p className="subtitle">I'll listen for pressure cooker whistles.</p>
             <div className="counter-display">
               <span className="current-count">{whistleCount}</span>
               <span className="target-count">/ {whistleTarget}</span>
             </div>
-            <div style={{ width: '100%', maxWidth: 320 }}>
-              <canvas ref={canvasRef} style={{ width: '100%', height: 80, background: isLightTheme ? '#f3f3f3' : '#222', borderRadius: 6 }} />
+            <div style={{ width: '100%', maxWidth: 320, height: 80 }}>
+              <canvas ref={canvasRef} width="320" height="80" style={{ width: '100%', height: '100%' }} />
             </div>
             <div className="input-group">
-              <label htmlFor="whistle-target">Target Whistles:</label>
-              <input id="whistle-target" type="number" min={1} value={whistleTarget} onChange={e => setWhistleTarget(parseInt(e.target.value || '1', 10))} disabled={isListening} className="pixel-input" />
+              <label htmlFor="whistle-target" style={{ flexShrink: 0 }}>Target:</label>
+              <input id="whistle-target" type="number" min={1} value={whistleTarget} onChange={e => setWhistleTarget(parseInt(e.target.value || '1', 10))} disabled={isListening} className="c-input" />
             </div>
-            <button onClick={isListening ? stopListening : startListening} className="pixel-button primary">
+            <button onClick={isListening ? stopListening : startListening} className="c-button primary" style={{ width: '100%', maxWidth: 320 }}>
               {isListening ? 'Stop Listening' : 'Start Listening'}
             </button>
-            {isListening && <div className="listening-indicator"><div></div><div></div><div></div></div>}
           </div>
         );
       case 'timer':
         return (
           <div className="feature-content">
             <h2>Cooking Timer</h2>
-            <p>Set a time and I'll alert you.</p>
+            <p className="subtitle">Set a time and I'll alert you.</p>
             <div className="timer-display">{formatTime(timeRemaining)}</div>
-            <div className="input-group timer-inputs">
-              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="pixel-input" />
+            <div className="input-group timer-inputs" style={{ justifyContent: 'center' }}>
+              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
               <span>:</span>
-              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="pixel-input" />
+              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
             </div>
             <div className="button-group">
-              <button onClick={handleStartTimer} disabled={isTimerRunning || timeRemaining > 0} className="pixel-button">Start</button>
-              <button onClick={handlePauseTimer} disabled={!isTimerRunning} className="pixel-button">Pause</button>
-              <button onClick={handleResetTimer} className="pixel-button secondary">Reset</button>
+              <button onClick={handleStartTimer} disabled={isTimerRunning || timeRemaining > 0} className="c-button primary">Start</button>
+              <button onClick={handlePauseTimer} disabled={!isTimerRunning} className="c-button secondary">Pause</button>
+              <button onClick={handleResetTimer} className="c-button secondary">Reset</button>
             </div>
           </div>
         );
@@ -368,50 +363,48 @@ const App: React.FC = () => {
                   <p>{msg.text}</p>
                 </div>
               ))}
-              {isLoading && <div className="chat-message ai"><span className="typing-indicator"></span></div>}
+              {isLoading && <div className="chat-message ai"><p>...</p></div>}
             </div>
             <form className="chat-input-form" onSubmit={handleSendMessage}>
-              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask me anything..." className="pixel-input" disabled={isLoading} />
-              <button type="submit" className="pixel-button" disabled={isLoading}>Send</button>
+              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask me anything..." className="c-input" disabled={isLoading} />
+              <button type="submit" className="c-button primary" disabled={isLoading}>Send</button>
             </form>
           </div>
         );
       case 'recipes':
         return (
           <div className="feature-content">
-            <h2>Cooker Recipes (AI)</h2>
-            <p>Choose your cooker and list ingredients. Press "Get Recipe".</p>
-            <div style={{ width: '100%', maxWidth: 340 }}>
-              <label>Cooker Type</label>
-              {/* FIX 2: Remove `as any` and use the specific `CookerType` cast */}
-              <select value={cookerType} onChange={e => setCookerType(e.target.value as CookerType)} className="pixel-input">
-                <option value="pressure">Pressure Cooker</option>
-                <option value="stovetop">Stovetop</option>
-                <option value="electric">Electric Cooker</option>
-              </select>
-              <label style={{ marginTop: 10 }}>Ingredients (comma separated)</label>
-              <input value={ingredientsInput} onChange={e => setIngredientsInput(e.target.value)} className="pixel-input" placeholder="e.g., potato, onion, tomato" />
-              <div style={{ marginTop: 12, display: 'flex', gap: 8 }}>
-                <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="pixel-button">
-                  {recipeLoading ? 'Thinking...' : 'Get Recipe (AI)'}
-                </button>
-                <button onClick={() => setRecipeOutput(fallbackRecipe(cookerType, ingredientsInput))} className="pixel-button secondary">Get Quick Recipe</button>
+            <h2>AI Recipe Helper</h2>
+            <p className="subtitle">Tell me what you have, I'll suggest a recipe.</p>
+            <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
+              <div>
+                <label>Cooker Type</label>
+                <select value={cookerType} onChange={e => setCookerType(e.target.value as CookerType)} className="c-input">
+                  <option value="pressure">Pressure Cooker</option>
+                  <option value="stovetop">Stovetop</option>
+                  <option value="electric">Electric Cooker</option>
+                </select>
               </div>
-              <div style={{ marginTop: 14, textAlign: 'left', whiteSpace: 'pre-wrap' }}>
-                {recipeOutput ? (
+              <div>
+                <label>Ingredients (comma separated)</label>
+                <input value={ingredientsInput} onChange={e => setIngredientsInput(e.target.value)} className="c-input" placeholder="e.g., potato, onion, tomato" />
+              </div>
+              <div className="button-group">
+                <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="c-button primary">
+                  {recipeLoading ? 'Thinking...' : 'Get AI Recipe'}
+                </button>
+                <button onClick={() => setRecipeOutput(fallbackRecipe(cookerType, ingredientsInput))} className="c-button secondary">Quick Recipe</button>
+              </div>
+              <div style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}>
+                {recipeOutput && (
                   <>
-                    <h3 style={{ fontFamily: 'var(--font-pixel)', fontSize: 12 }}>Recipe</h3>
-                    <div style={{ background: isLightTheme ? '#fff' : '#333', padding: 12, borderRadius: 8, color: isLightTheme ? '#111' : '#fff' }}>
+                    <h3 style={{ fontSize: 16, fontWeight: 600 }}>Recipe Suggestion:</h3>
+                    <div style={{ background: isLightTheme ? '#fff' : '#2c3035', padding: 12, borderRadius: 8, border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}` }}>
                       {recipeOutput}
                     </div>
                   </>
-                ) : (
-                  recipeLoading || <p style={{ color: 'var(--secondary-color)' }}>No recipe yet.</p>
                 )}
               </div>
-              <p style={{ marginTop: 8, fontSize: 12, color: 'var(--secondary-color)' }}>
-                Note: AI call is proxied through /api/ai-recipe on your server.
-              </p>
             </div>
           </div>
         );
@@ -426,11 +419,9 @@ const App: React.FC = () => {
       <div className="main-container">
         <header className="app-header">
           <h1>Cook'n'Count</h1>
-          <div style={{ marginTop: 8 }}>
-            <button onClick={() => setIsLightTheme(prev => !prev)} className="pixel-button" style={{ padding: '6px 8px', fontSize: 10 }}>
-              {isLightTheme ? 'Dark UI' : 'Light UI'}
-            </button>
-          </div>
+          <button onClick={() => setIsLightTheme(prev => !prev)} className="c-button secondary" style={{ padding: '6px 12px', fontSize: 12 }}>
+            {isLightTheme ? 'Dark' : 'Light'} UI
+          </button>
         </header>
         <nav className="app-nav">
           <button className={`nav-button ${activeTab === 'counter' ? 'active' : ''}`} onClick={() => setActiveTab('counter')}>Counter</button>
