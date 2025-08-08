@@ -11,8 +11,8 @@ app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
-// Configure the model to use JSON mode for reliable output
-const model = genAI.getGenerativeModel({ 
+// Model for JSON-based responses (Recipes, Horoscope)
+const jsonModel = genAI.getGenerativeModel({ 
   model: "gemini-1.5-flash",
   generationConfig: {
     responseMimeType: "application/json",
@@ -30,20 +30,22 @@ app.post('/api/ai-recipe', async (req, res) => {
       return res.status(400).json({ error: 'Ingredients are required.' });
     }
 
-    // UPDATED PROMPT: Asks for a specific JSON structure for the recipe.
     const prompt = `
-      You are Kunjuttan, a helpful kitchen assistant from Kerala, India. 
-      Create a simple recipe for a ${cooker} using these ingredients: ${ingredients}.
+    You are Kunjuttan, a helpful kitchen assistant from Kerala, India. 
+    Create a simple recipe for a ${cooker} using these ingredients: ${ingredients}.
 
-      Return your response ONLY as a single, minified JSON object with the following structure:
-      {
-        "recipe_name": "A creative and appropriate name for the dish",
-        "description": "A brief, one-sentence description of the dish",
-        "steps": ["Step 1...", "Step 2...", "Step 3..."]
-      }
+    All recipe details (name, description, steps) must be in Malayalam script.
+    Make the cooking steps clear, well-structured, and easy to follow — each step should be a complete instruction.
+
+    Return your response ONLY as a single, minified JSON object with the following structure:
+    {
+      "recipe_name": "ഭക്ഷണത്തിന് സൃഷ്ടിപരമായും അനുയോജ്യമായും പേരിടുക",
+      "description": "ഭക്ഷണത്തിന്റെ ചുരുങ്ങിയ, ഒരു വരി വിവരണം",
+      "steps": [""]
+    }
     `;
 
-    const result = await model.generateContent(prompt);
+    const result = await jsonModel.generateContent(prompt);
     const response = result.response;
     const text = response.text();
     
@@ -69,20 +71,25 @@ app.post('/api/dish-horoscope', async (req, res) => {
     }
 
     const prompt = `
-      You are Kunjuttan, a wise and warm-hearted kitchen assistant from Kerala, India. Your task is to create a deep and culturally rich 'Personality Dish Horoscope' based on a person's name.
+    You are Kunjuttan, a sarcastic yet lovable kitchen assistant from Kerala, India. 
+    Your job is to create a hilarious and slightly roasting 'Personality Dish Horoscope' based on a person's name.
 
-      Follow these steps precisely:
-      1. Analyze the provided name: "${name}". Consider its traditional, cultural, or mythological significance.
-      2. Based on the name's origin and significance, choose one iconic dish from that culture that thematically connects to the name's meaning. For example, for "Vishnu", a name associated with preservation and divinity, a dish like "Payasam" (a temple offering) is a perfect fit.
-      3. Describe the dish's core characteristics AND its cultural or historical role (e.g., its connection to festivals, celebrations, or traditions).
-      4. Translate these combined characteristics (taste, texture, cultural role) into warm, positive, and kind personality traits. Connect the sweetness of the dish to a sweet nature, its celebratory role to a joyful presence, etc.
-      5. Weave this into a single, heartfelt personality reading.
+    Follow these steps:
+    1. Analyze the provided name: "${name}". Think about its cultural, traditional, or pop culture associations.
+    2. Based on the name, pick one iconic dish from Kerala or relevant culture that somehow matches — either because of meaning, personality vibe, or just a funny, illogical connection that sounds right.
+    3. Describe the dish's core characteristics (taste, smell, texture, popularity, etc.) and its cultural or historical role — but do it in a playful tone.
+    4. Translate these characteristics into funny personality traits that roast the person lightly, mixing humor and truth. For example: if the dish is oily, tease that the person is "slippery in arguments".
+    5. Write a **bold Malayalam caption** linking the name and dish, e.g., "**വിഷ്ണു - പായസം അല്ല, അധികം മധുരം കെട്ടുപോയി!**".
+    6. Keep the roast light-hearted, not offensive.
 
-      Return your response ONLY as a single, minified JSON object with the following structure:
-      {"dishName": "...", "origin": "...", "dishAnalysis": "...", "personalityReading": "..."}
+    Return your response ONLY as a minified JSON object:
+    {"dishName": "...", "origin": "...", "dishAnalysis": "...", "personalityReading": "...", "roastCaption": "..."}
+
+    IMPORTANT: All values except 'dishName' and 'origin' must be in Malayalam script, not Manglish.
     `;
+
     
-    const result = await model.generateContent(prompt);
+    const result = await jsonModel.generateContent(prompt);
     const response = result.response;
     const text = response.text();
 
@@ -97,6 +104,40 @@ app.post('/api/dish-horoscope', async (req, res) => {
     res.status(500).json({ error: 'An internal server error occurred while contacting the AI.' });
   }
 });
+
+/**
+ * @route   POST /api/chat
+ * @desc    Handles general conversational messages with the AI.
+ */
+app.post('/api/chat', async (req, res) => {
+  try {
+    const { message } = req.body;
+    if (!message) {
+      return res.status(400).json({ error: 'Message is required.' });
+    }
+
+    // This model is configured for text-only replies.
+    const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+
+    const prompt = `You are Kunjuttan, a helpful and friendly kitchen assistant from Kerala, India. 
+    You have a warm, slightly informal personality. 
+    Your knowledge is primarily about cooking, but you can chat about other things too. 
+    Always respond in Malayalam, using natural, conversational language. 
+    Respond to the user's message: "${message}"`;
+
+    
+    const result = await textModel.generateContent(prompt);
+    const response = result.response;
+    const text = response.text();
+
+    res.json({ reply: text });
+
+  } catch (error) {
+    console.error('Error in /api/chat:', error);
+    res.status(500).json({ error: 'I\'m sorry, I had a little trouble thinking. Please try again.' });
+  }
+});
+
 
 // --- Start Server ---
 app.listen(port, () => {

@@ -56,7 +56,7 @@ const App: React.FC = () => {
   ]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
-  // Recipes State - UPDATED to handle structured object
+  // Recipes State
   const [cookerType, setCookerType] = useState<CookerType>('pressure');
   const [ingredientsInput, setIngredientsInput] = useState<string>('');
   const [recipeOutput, setRecipeOutput] = useState<RecipeResult>(null);
@@ -125,6 +125,7 @@ const App: React.FC = () => {
       alarmAudioRef.current.play().catch(err => console.warn('Alarm play error', err));
     }
   };
+
   const stopAlarm = () => {
     if (alarmAudioRef.current) {
       alarmAudioRef.current.pause();
@@ -163,8 +164,8 @@ const App: React.FC = () => {
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-    const WHISTLE_FREQ_MIN = 5000;
-    const WHISTLE_FREQ_MAX = 10000;
+    const WHISTLE_FREQ_MIN = 2000;
+    const WHISTLE_FREQ_MAX = 8000;
     const WHISTLE_THRESHOLD = 180;
     const DEBOUNCE_TIME = 1500;
     const binToFreq = (bin: number) => (bin * audioContextRef.current!.sampleRate) / analyser.fftSize;
@@ -231,6 +232,7 @@ const App: React.FC = () => {
     }
   };
   const handlePauseTimer = () => setIsTimerRunning(false);
+
   const handleResetTimer = () => {
     setIsTimerRunning(false);
     setTimeRemaining(0);
@@ -238,23 +240,43 @@ const App: React.FC = () => {
     setTimerInputSeconds('00');
     stopAlarm();
   };
+
   const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!chatInput.trim() || isLoading) return;
-    const newUserMessage: Message = { sender: 'user', text: chatInput };
+    const userInput = chatInput.trim();
+    if (!userInput || isLoading) return;
+
+    const newUserMessage: Message = { sender: 'user', text: userInput };
     setMessages(prev => [...prev, newUserMessage]);
     setChatInput('');
     setIsLoading(true);
-    setTimeout(() => {
-      const aiMessage: Message = { sender: 'ai', text: `You asked: "${newUserMessage.text}". For real recipes, please use the Recipes tab.` };
+
+    try {
+      const resp = await fetch('http://localhost:3001/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userInput }),
+      });
+
+      if (!resp.ok) {
+        throw new Error('Network response was not ok');
+      }
+
+      const data = await resp.json();
+      const aiMessage: Message = { sender: 'ai', text: data.reply || "I'm not sure what to say!" };
       setMessages(prev => [...prev, aiMessage]);
+
+    } catch (error) {
+      console.error("Chat error:", error);
+      const errorMessage: Message = { sender: 'ai', text: 'Oops! I had a little trouble connecting. Please check the server and try again.' };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
       setIsLoading(false);
-    }, 700);
+    }
   };
 
-  // UPDATED to handle structured JSON recipe
   const requestRecipeFromAI = async () => {
     setRecipeOutput(null);
     setRecipeError(null);
@@ -322,18 +344,14 @@ const App: React.FC = () => {
           <div className="feature-content">
             <h2>Whistle Counter</h2>
             <p className="subtitle">I'll listen for pressure cooker whistles.</p>
-            <div className="counter-display">
-              <span className="current-count">{whistleCount}</span>
-              <span className="target-count">/ {whistleTarget}</span>
-            </div>
+            <div className="counter-display">{whistleCount} <span className="target-count">/ {whistleTarget}</span></div>
             <div style={{ width: '100%', maxWidth: 320, height: 80 }}>
               <canvas ref={canvasRef} width="320" height="80" style={{ width: '100%', height: '100%' }} />
             </div>
             <div className="input-group">
-              <label htmlFor="whistle-target" style={{ flexShrink: 0 }}>Target:</label>
-              <input id="whistle-target" type="number" min={1} value={whistleTarget} onChange={e => setWhistleTarget(parseInt(e.target.value || '1', 10))} disabled={isListening} className="c-input" />
+              <input id="whistle-target" type="number" min={1} value={whistleTarget} onChange={e => setWhistleTarget(parseInt(e.target.value || '1', 10))} disabled={isListening} className="c-input pixel-border" />
             </div>
-            <button onClick={isListening ? stopListening : startListening} className="c-button primary" style={{ width: '100%', maxWidth: 320 }}>
+            <button onClick={isListening ? stopListening : startListening} className="c-button pixel-border">
               {isListening ? 'Stop Listening' : 'Start Listening'}
             </button>
           </div>
@@ -344,31 +362,29 @@ const App: React.FC = () => {
             <h2>Cooking Timer</h2>
             <p className="subtitle">Set a time and I'll alert you.</p>
             <div className="timer-display">{formatTime(timeRemaining)}</div>
-            <div className="input-group timer-inputs" style={{ justifyContent: 'center' }}>
-              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
-              <span>:</span>
-              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
+            <div className="input-group">
+              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input pixel-border"/>
+              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input pixel-border"/>
             </div>
             <div className="button-group">
-              <button onClick={handleStartTimer} disabled={isTimerRunning || timeRemaining > 0} className="c-button primary">Start</button>
-              <button onClick={handlePauseTimer} disabled={!isTimerRunning} className="c-button secondary">Pause</button>
-              <button onClick={handleResetTimer} className="c-button secondary">Reset</button>
+              <button onClick={handleStartTimer} disabled={isTimerRunning || timeRemaining > 0} className="c-button pixel-border primary">Start</button>
+              <button onClick={handlePauseTimer} disabled={!isTimerRunning} className="c-button pixel-border">Pause</button>
+              <button onClick={handleResetTimer} className="c-button pixel-border">Reset</button>
             </div>
           </div>
         );
       case 'chat':
         return (
           <div className="feature-content chat-container">
-            <div className="chat-header"><h2>Chat with Kunjuttan</h2></div>
             <div className="chat-body" ref={chatBodyRef}>
               {messages.map((msg, i) => (
-                <div key={i} className={`chat-message ${msg.sender}`}><p>{msg.text}</p></div>
+                <div key={i} className={`chat-message pixel-border ${msg.sender}`}><p>{msg.text}</p></div>
               ))}
-              {isLoading && <div className="chat-message ai"><p>...</p></div>}
+              {isLoading && <div className="chat-message pixel-border ai"><p>...</p></div>}
             </div>
             <form className="chat-input-form" onSubmit={handleSendMessage}>
-              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask me anything..." className="c-input" disabled={isLoading} />
-              <button type="submit" className="c-button primary" disabled={isLoading}>Send</button>
+              <input type="text" value={chatInput} onChange={e => setChatInput(e.target.value)} placeholder="Ask me anything..." className="c-input pixel-border" disabled={isLoading} />
+              <button type="submit" className="c-button pixel-border primary" disabled={isLoading}>Send</button>
             </form>
           </div>
         );
@@ -377,35 +393,29 @@ const App: React.FC = () => {
           <div className="feature-content">
             <h2>AI Recipe Helper</h2>
             <p className="subtitle">Tell me what you have, I'll suggest a recipe.</p>
-            <div style={{ width: '100%', maxWidth: 340, display: 'flex', flexDirection: 'column', gap: 16 }}>
-              <div>
-                <label>Cooker Type</label>
-                <select value={cookerType} onChange={e => setCookerType(e.target.value as CookerType)} className="c-input">
-                  <option value="pressure">Pressure Cooker</option>
-                  <option value="stovetop">Stovetop</option>
-                  <option value="electric">Electric Cooker</option>
-                </select>
-              </div>
-              <div>
-                <label>Ingredients (comma separated)</label>
-                <input value={ingredientsInput} onChange={e => setIngredientsInput(e.target.value)} className="c-input" placeholder="e.g., potato, onion, tomato" />
-              </div>
-              <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="c-button primary">
-                {recipeLoading ? 'Thinking...' : 'Get AI Recipe'}
+            <div style={{ width: '100%', maxWidth: 480, display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <select value={cookerType} onChange={e => setCookerType(e.target.value as CookerType)} className="c-input pixel-border">
+                <option value="pressure">Pressure Cooker</option>
+                <option value="stovetop">Stovetop</option>
+                <option value="electric">Electric Cooker</option>
+              </select>
+              <input value={ingredientsInput} onChange={e => setIngredientsInput(e.target.value)} className="c-input pixel-border" placeholder="e.g., potato, onion, tomato" />
+              <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="c-button pixel-border primary">
+                {recipeLoading ? 'Thinking...' : 'Get Recipe'}
               </button>
               {recipeLoading && <p>Generating your recipe...</p>}
               {recipeError && !recipeLoading && (
-                <div style={{ color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '10px', borderRadius: 8 }}>
-                    <strong>Oops!</strong> {recipeError}
+                <div className="pixel-border" style={{ padding: '1rem', color: '#ff5555' }}>
+                  <strong>Oops!</strong> {recipeError}
                 </div>
               )}
               {recipeOutput && !recipeLoading && (
-                <div style={{ textAlign: 'left', background: isLightTheme ? '#fff' : '#2c3035', padding: '16px', borderRadius: 12, border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}` }}>
-                  <h3 style={{ marginTop: 0, fontSize: 18 }}>{recipeOutput.recipe_name}</h3>
-                  <p style={{ fontStyle: 'italic', color: isLightTheme ? '#5f6b7a' : '#a0a7b0' }}>{recipeOutput.description}</p>
-                  <h4 style={{ marginBottom: '8px' }}>Steps:</h4>
+                <div className="pixel-border" style={{ padding: '1.5rem', textAlign: 'left', lineHeight: 1.5 }}>
+                  <h3 style={{ marginTop: 0, fontSize: '1.2rem', color: 'var(--secondary-dark)' }}>{recipeOutput.recipe_name}</h3>
+                  <p style={{ fontStyle: 'italic', opacity: 0.8 }}>{recipeOutput.description}</p>
+                  <h4 style={{ marginTop: '1.5rem', marginBottom: '0.5rem' }}>Steps:</h4>
                   <ol style={{ paddingLeft: '20px', margin: 0 }}>
-                    {recipeOutput.steps.map((step, i) => <li key={i} style={{ marginBottom: '8px' }}>{step}</li>)}
+                    {recipeOutput.steps.map((step, i) => <li key={i} style={{ marginBottom: '0.5rem' }}>{step}</li>)}
                   </ol>
                 </div>
               )}
@@ -415,41 +425,41 @@ const App: React.FC = () => {
       case 'horoscope':
         return (
           <div className="feature-content">
-            <h2>Personality Dish Horoscope</h2>
+            <h2>Dish Horoscope</h2>
             <p className="subtitle">Discover your inner dish!</p>
-            <div className="input-group" style={{ maxWidth: 340 }}>
+            <div className="input-group" style={{ maxWidth: 480 }}>
               <input
                 type="text"
                 value={horoscopeName}
                 onChange={(e) => setHoroscopeName(e.target.value)}
                 placeholder="Enter a name..."
-                className="c-input"
+                className="c-input pixel-border"
                 disabled={horoscopeLoading}
                 onKeyDown={(e) => e.key === 'Enter' && handleGetHoroscope()}
               />
-              <button onClick={handleGetHoroscope} className="c-button primary" disabled={horoscopeLoading}>
+              <button onClick={handleGetHoroscope} className="c-button pixel-border primary" disabled={horoscopeLoading}>
                 {horoscopeLoading ? '...' : 'Reveal'}
               </button>
             </div>
             {horoscopeLoading && <p>Finding your soul dish...</p>}
             {horoscopeError && !horoscopeLoading && (
-                <div style={{ marginTop: 20, color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '10px', borderRadius: 8, width: '100%', maxWidth: 340 }}>
+                <div className="pixel-border" style={{ padding: '1rem', color: '#ff5555' }}>
                     <strong>Oops!</strong> {horoscopeError}
                 </div>
             )}
             {horoscopeResult && !horoscopeLoading && (
-              <div style={{ marginTop: 20, padding: '16px 20px', borderRadius: 12, background: isLightTheme ? '#fff' : '#2c3035', border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}`, textAlign: 'left', width: '100%', maxWidth: 340, animation: 'fadeIn 0.5s ease-in-out' }}>
-                <h3 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px 0', color: isLightTheme ? 'var(--primary-light)' : 'var(--primary-dark)' }}>
+              <div className="pixel-border" style={{ padding: '1.5rem', textAlign: 'left', lineHeight: 1.6, maxWidth: 500 }}>
+                <h3 style={{ fontSize: '1.5rem', color: 'var(--secondary-dark)', margin: 0 }}>
                   {horoscopeResult.dishName}
                 </h3>
-                <p style={{ fontSize: 14, color: isLightTheme ? 'var(--text-secondary-light)' : 'var(--text-secondary-dark)', margin: '0 0 16px 0', fontStyle: 'italic' }}>
+                <p style={{ opacity: 0.7, margin: '0 0 1rem 0' }}>
                   ({horoscopeResult.origin})
                 </p>
-                <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
-                  <strong>Dish Analysis:</strong> {horoscopeResult.dishAnalysis}
+                <p style={{ margin: '0 0 1rem 0' }}>
+                  <strong>Analysis:</strong> {horoscopeResult.dishAnalysis}
                 </p>
-                <p style={{ margin: 0, lineHeight: 1.5 }}>
-                  <strong>Personality Reading:</strong> {horoscopeResult.personalityReading}
+                <p style={{ margin: 0 }}>
+                  <strong>Reading:</strong> {horoscopeResult.personalityReading}
                 </p>
               </div>
             )}
@@ -459,6 +469,8 @@ const App: React.FC = () => {
         return null;
     }
   };
+  
+  const TABS: ActiveTab[] = ['counter', 'timer', 'recipes', 'horoscope', 'chat'];
 
   return (
     <div className={isLightTheme ? 'light' : ''}>
@@ -466,22 +478,26 @@ const App: React.FC = () => {
       <div className="main-container">
         <header className="app-header">
           <h1>Cook'n'Count</h1>
-          <button onClick={() => setIsLightTheme(prev => !prev)} className="c-button secondary" style={{ padding: '6px 12px', fontSize: 12 }}>
-            {isLightTheme ? 'Dark' : 'Light'} UI
+          <button onClick={() => setIsLightTheme(prev => !prev)} className="c-button pixel-border" style={{ fontSize: '0.8rem', padding: '0.5rem 1rem' }}>
+            {isLightTheme ? 'Dark UI' : 'Light UI'}
           </button>
         </header>
-        <nav className="app-nav">
-          <button className={`nav-button ${activeTab === 'counter' ? 'active' : ''}`} onClick={() => setActiveTab('counter')}>Counter</button>
-          <button className={`nav-button ${activeTab === 'timer' ? 'active' : ''}`} onClick={() => setActiveTab('timer')}>Timer</button>
-          <button className={`nav-button ${activeTab === 'recipes' ? 'active' : ''}`} onClick={() => setActiveTab('recipes')}>Recipes</button>
-          <button className={`nav-button ${activeTab === 'horoscope' ? 'active' : ''}`} onClick={() => setActiveTab('horoscope')}>Horoscope</button>
-          <button className={`nav-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Chat</button>
+
+        <nav className="app-nav pixel-border">
+          {TABS.map(tab => (
+            <button
+              key={tab}
+              className={`nav-button pixel-border ${activeTab === tab ? 'active' : ''}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+            </button>
+          ))}
         </nav>
-        <main className="app-content">{renderContent()}</main>
+
+        <main className="app-content pixel-border">{renderContent()}</main>
+
       </div>
-      <style>{`
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-      `}</style>
     </div>
   );
 };

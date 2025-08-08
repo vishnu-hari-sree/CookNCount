@@ -1,62 +1,82 @@
-/* src/index.css */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
 
 :root {
   --font-sans: 'Inter', sans-serif;
   
-  /* Dark Theme */
-  --bg-dark: #1a1d21;
-  --surface-dark: #2c3035;
+  /* --- Dark Theme Glass Variables --- */
+  --bg-dark: #121212; /* Darker background for more contrast */
+  --glass-bg-dark: rgba(35, 38, 43, 0.6);
+  --glass-border-dark: rgba(255, 255, 255, 0.1);
   --primary-dark: #4f8eff;
   --text-primary-dark: #eef1f4;
   --text-secondary-dark: #a0a7b0;
-  --border-dark: #3a4046;
+  --shadow-dark: rgba(0, 0, 0, 0.3);
 
-  /* Light Theme */
-  --bg-light: #f4f6f8;
-  --surface-light: #ffffff;
+  /* --- Light Theme Glass Variables --- */
+  --bg-light: #f0f4f8; /* Softer background */
+  --glass-bg-light: rgba(255, 255, 255, 0.6);
+  --glass-border-light: rgba(0, 0, 0, 0.1);
   --primary-light: #0062ff;
   --text-primary-light: #1a1d21;
   --text-secondary-light: #5f6b7a;
-  --border-light: #dde3ea;
+  --shadow-light: rgba(0, 0, 0, 0.1);
+}
+
+/* Animated Gradient Background */
+@keyframes gradient-animation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 body {
   margin: 0;
-  padding: 0;
+  padding: 2rem;
   font-family: var(--font-sans);
-  background-color: var(--bg-dark);
   color: var(--text-primary-dark);
   display: flex;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
+  box-sizing: border-box;
+
+  background: linear-gradient(-45deg, #ee7752, #e73c7e, #23a6d5, #23d5ab);
+  background-size: 400% 400%;
+  animation: gradient-animation 15s ease infinite;
+  
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
 }
 
-.light {
-  background-color: var(--bg-light);
-  color: var(--text-primary-light);
+.light body {
+   color: var(--text-primary-light);
 }
 
+/* This is our main glass container */
 .main-container {
   width: 100%;
-  max-width: 400px;
+  width: 800px;
   height: 85vh;
   max-height: 780px;
-  background-color: var(--bg-dark);
+  
+  /* Glass Effect */
+  background-color: var(--glass-bg-dark);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border-dark);
+  
   border-radius: 24px;
-  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  box-shadow: 0 8px 32px 0 var(--shadow-dark);
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  transition: background-color 0.3s, border 0.3s;
 }
 
 .light .main-container {
-  background-color: var(--bg-light);
-  border: 1px solid var(--border-light);
-  box-shadow: 0 10px 30px rgba(100,100,100,0.1);
+  background-color: var(--glass-bg-light);
+  border: 1px solid var(--glass-border-light);
+  box-shadow: 0 8px 32px 0 var(--shadow-light);
 }
 
 .app-header {
@@ -64,12 +84,8 @@ body {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  border-bottom: 1px solid var(--border-dark);
+  /* No border needed, the blur creates separation */
   flex-shrink: 0;
-}
-
-.light .app-header {
-  border-bottom: 1px solid var(--border-light);
 }
 
 .app-header h1 {
@@ -81,12 +97,17 @@ body {
 .app-nav {
   display: flex;
   padding: 8px;
-  background-color: var(--surface-dark);
+  margin: 0 8px; /* Give it some margin */
+  border-radius: 12px;
+  
+  /* Glass Effect */
+  background-color: rgba(0,0,0,0.1); /* Subtle inner glass */
+
   flex-shrink: 0;
 }
 
 .light .app-nav {
-  background-color: var(--surface-light);
+   background-color: rgba(255,255,255,0.2);
 }
 
 .nav-button {
@@ -123,6 +144,18 @@ body {
   overflow-y: auto;
 }
 
+/* Custom scrollbar to match the theme */
+.app-content::-webkit-scrollbar {
+  width: 6px;
+}
+.app-content::-webkit-scrollbar-thumb {
+  background: var(--glass-border-dark);
+  border-radius: 3px;
+}
+.light .app-content::-webkit-scrollbar-thumb {
+  background: var(--glass-border-light);
+}
+
 .feature-content {
   display: flex;
   flex-direction: column;
@@ -141,6 +174,7 @@ body {
 .feature-content p.subtitle {
   margin: -12px 0 12px 0;
   color: var(--text-secondary-dark);
+  font-weight: 400;
 }
 
 .light .feature-content p.subtitle {
@@ -148,8 +182,8 @@ body {
 }
 
 .c-input, select.c-input {
-  background-color: var(--surface-dark);
-  border: 1px solid var(--border-dark);
+  background-color: rgba(0,0,0,0.15);
+  border: 1px solid var(--glass-border-dark);
   color: var(--text-primary-dark);
   padding: 12px;
   font-family: var(--font-sans);
@@ -157,22 +191,32 @@ body {
   width: 100%;
   box-sizing: border-box;
   border-radius: 8px;
-  transition: border-color 0.2s, box-shadow 0.2s;
+  transition: border-color 0.2s, box-shadow 0.2s, background-color 0.2s;
 }
 
 .light .c-input, .light select.c-input {
-  background-color: var(--surface-light);
-  border-color: var(--border-light);
+  background-color: rgba(255,255,255,0.3);
+  border-color: var(--glass-border-light);
   color: var(--text-primary-light);
 }
 
+.c-input::placeholder {
+    color: var(--text-secondary-dark);
+}
+.light .c-input::placeholder {
+    color: var(--text-secondary-light);
+}
+
+
 .c-input:focus {
   outline: none;
+  background-color: rgba(0,0,0,0.25);
   border-color: var(--primary-dark);
   box-shadow: 0 0 0 3px rgba(79, 142, 255, 0.3);
 }
 
 .light .c-input:focus {
+  background-color: rgba(255,255,255,0.5);
   border-color: var(--primary-light);
   box-shadow: 0 0 0 3px rgba(0, 98, 255, 0.2);
 }
@@ -191,33 +235,35 @@ body {
 .c-button.primary {
   background-color: var(--primary-dark);
   color: #fff;
+  box-shadow: 0 4px 15px -5px var(--primary-dark);
 }
 
 .light .c-button.primary {
   background-color: var(--primary-light);
+  box-shadow: 0 4px 15px -5px var(--primary-light);
 }
 
 .c-button.secondary {
-  background-color: var(--surface-dark);
+  /* Secondary buttons get the glass effect too */
+  background-color: var(--glass-bg-dark);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
   color: var(--text-primary-dark);
-  border: 1px solid var(--border-dark);
+  border: 1px solid var(--glass-border-dark);
 }
 
 .light .c-button.secondary {
-  background-color: var(--surface-light);
+  background-color: var(--glass-bg-light);
   color: var(--text-primary-light);
-  border: 1px solid var(--border-light);
+  border: 1px solid var(--glass-border-light);
 }
 
 .c-button:disabled {
-  background-color: #4a4f55;
-  color: var(--text-secondary-dark);
+  background-color: var(--glass-bg-dark) !important;
+  color: var(--text-secondary-dark) !important;
   cursor: not-allowed;
-}
-
-.light .c-button:disabled {
-  background-color: #eef1f4;
-  color: var(--text-secondary-light);
+  opacity: 0.5;
+  box-shadow: none;
 }
 
 .c-button:active:not(:disabled) {
@@ -232,31 +278,26 @@ body {
   max-width: 320px;
 }
 
-.timer-display {
-  font-size: 64px;
+.timer-display, .counter-display {
   font-weight: 700;
-  color: var(--text-primary-dark);
+  text-shadow: 0 2px 10px var(--shadow-dark);
 }
 
-.light .timer-display {
- color: var(--text-primary-light);
+.timer-display {
+  font-size: 64px;
 }
 
 .counter-display {
   font-size: 80px;
-  font-weight: 700;
-  color: var(--text-primary-dark);
-}
-.light .counter-display {
- color: var(--text-primary-light);
 }
 
 .counter-display .target-count {
   font-size: 32px;
   font-weight: 500;
   color: var(--text-secondary-dark);
+  opacity: 0.7;
+  text-shadow: none;
 }
-
 .light .counter-display .target-count {
  color: var(--text-secondary-light);
 }
@@ -274,10 +315,10 @@ body {
 
 .chat-header {
   padding: 16px 20px;
-  border-bottom: 1px solid var(--border-dark);
+  background-color: rgba(0,0,0,0.1);
 }
 .light .chat-header {
-  border-bottom: 1px solid var(--border-light);
+  background-color: rgba(255,255,255,0.2);
 }
 
 .chat-body {
@@ -309,38 +350,41 @@ body {
   color: #fff;
   align-self: flex-end;
   border-bottom-right-radius: 4px;
+  box-shadow: 0 2px 5px -2px var(--primary-dark);
 }
 .light .chat-message.user {
   background: var(--primary-light);
+   box-shadow: 0 2px 5px -2px var(--primary-light);
 }
 
 .chat-message.ai {
-  background: var(--surface-dark);
+  background: rgba(0,0,0,0.25);
   align-self: flex-start;
   border-bottom-left-radius: 4px;
+  border: 1px solid var(--glass-border-dark);
 }
 .light .chat-message.ai {
-  background: var(--surface-light);
-  border: 1px solid var(--border-light);
+  background: rgba(255,255,255,0.4);
+  border: 1px solid var(--glass-border-light);
 }
 
 .chat-input-form {
   display: flex;
   padding: 16px;
   gap: 12px;
-  border-top: 1px solid var(--border-dark);
-  background-color: var(--bg-dark);
+  background-color: rgba(0,0,0,0.2);
 }
 
 .light .chat-input-form {
-  border-top: 1px solid var(--border-light);
-  background-color: var(--bg-light);
+  background-color: rgba(255,255,255,0.3);
 }
 
 /* small responsiveness */
-@media (max-width: 420px) {
+@media (max-width: 800px) {
+  body {
+    padding: 0;
+  }
   .main-container {
-    margin: 0;
     height: 100vh;
     max-height: none;
     border-radius: 0;
