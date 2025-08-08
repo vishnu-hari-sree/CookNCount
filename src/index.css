@@ -65,6 +65,7 @@ body {
   justify-content: space-between;
   align-items: center;
   border-bottom: 1px solid var(--border-dark);
+  flex-shrink: 0;
 }
 
 .light .app-header {
@@ -81,6 +82,7 @@ body {
   display: flex;
   padding: 8px;
   background-color: var(--surface-dark);
+  flex-shrink: 0;
 }
 
 .light .app-nav {

@@ -1,72 +1,94 @@
 // src/App.tsx
 import React, { useState, useEffect, useRef } from 'react';
 
-// FIX 1: Add a global declaration for the prefixed AudioContext
+// --- Helper Types ---
+
 declare global {
   interface Window {
     webkitAudioContext: typeof AudioContext
   }
 }
 
-// --- Helper Types ---
 type Message = {
   sender: 'user' | 'ai';
   text: string;
 };
 
-type ActiveTab = 'counter' | 'timer' | 'chat' | 'recipes';
+type ActiveTab = 'counter' | 'timer' | 'chat' | 'recipes' | 'horoscope';
 
-// FIX 2: Create a specific type for cooker options
 type CookerType = 'pressure' | 'stovetop' | 'electric';
+
+// Type for the structured recipe response
+type RecipeResult = {
+  recipe_name: string;
+  description: string;
+  steps: string[];
+} | null;
+
+type HoroscopeResult = {
+  dishName: string;
+  origin: string;
+  dishAnalysis: string;
+  personalityReading: string;
+} | null;
+
 
 // --- Main App Component ---
 const App: React.FC = () => {
+  // --- State Management ---
   const [activeTab, setActiveTab] = useState<ActiveTab>('counter');
-
-  // --- Theme ---
   const [isLightTheme, setIsLightTheme] = useState<boolean>(false);
 
-  // --- Whistle Counter State & Logic ---
+  // Whistle Counter State
   const [whistleTarget, setWhistleTarget] = useState<number>(3);
   const [whistleCount, setWhistleCount] = useState<number>(0);
   const [isListening, setIsListening] = useState<boolean>(false);
+
+  // Timer State
+  const [timerInputMinutes, setTimerInputMinutes] = useState<string>('10');
+  const [timerInputSeconds, setTimerInputSeconds] = useState<string>('00');
+  const [timeRemaining, setTimeRemaining] = useState<number>(0);
+  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
+
+  // Chatbot State
+  const [chatInput, setChatInput] = useState<string>('');
+  const [messages, setMessages] = useState<Message[]>([
+    { sender: 'ai', text: "Njan Kunjuttan! What can I help you with today?" },
+  ]);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
+
+  // Recipes State - UPDATED to handle structured object
+  const [cookerType, setCookerType] = useState<CookerType>('pressure');
+  const [ingredientsInput, setIngredientsInput] = useState<string>('');
+  const [recipeOutput, setRecipeOutput] = useState<RecipeResult>(null);
+  const [recipeLoading, setRecipeLoading] = useState<boolean>(false);
+  const [recipeError, setRecipeError] = useState<string | null>(null);
+
+  // Horoscope State
+  const [horoscopeName, setHoroscopeName] = useState<string>('');
+  const [horoscopeResult, setHoroscopeResult] = useState<HoroscopeResult>(null);
+  const [horoscopeLoading, setHoroscopeLoading] = useState<boolean>(false);
+  const [horoscopeError, setHoroscopeError] = useState<string | null>(null);
+
+  // --- Refs ---
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const mediaStreamSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const animationFrameRef = useRef<number | null>(null);
   const lastWhistleTimeRef = useRef<number>(0);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-
-  // --- Timer State & Logic ---
-  const [timerInputMinutes, setTimerInputMinutes] = useState<string>('10');
-  const [timerInputSeconds, setTimerInputSeconds] = useState<string>('00');
-  const [timeRemaining, setTimeRemaining] = useState<number>(0);
-  const [isTimerRunning, setIsTimerRunning] = useState<boolean>(false);
   const timerIntervalRef = useRef<number | null>(null);
-
-  // --- Chatbot State & Logic ---
-  const [chatInput, setChatInput] = useState<string>('');
-  const [messages, setMessages] = useState<Message[]>([
-    { sender: 'ai', text: "Njan Kunjuttan! Endha sahayam vende? Ask me for recipes or whistle counts!" },
-  ]);
-  const [isLoading, setIsLoading] = useState<boolean>(false);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
-
-  // --- Audio Alarm ---
   const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
 
-  // --- Recipes State ---
-  const [cookerType, setCookerType] = useState<CookerType>('pressure'); // Use the new type
-  const [ingredientsInput, setIngredientsInput] = useState<string>('');
-  const [recipeOutput, setRecipeOutput] = useState<string>('');
-  const [recipeLoading, setRecipeLoading] = useState<boolean>(false);
 
-  // --- Scroll chat to bottom on new message ---
+  // --- Effects ---
   useEffect(() => {
-    if (chatBodyRef.current) chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    if (chatBodyRef.current) {
+      chatBodyRef.current.scrollTop = chatBodyRef.current.scrollHeight;
+    }
   }, [messages]);
 
-  // --- Cleanup on unmount ---
   useEffect(() => {
     return () => {
       if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
@@ -77,80 +99,88 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // --- Audio Visualization & Whistle Detection ---
+  useEffect(() => {
+    if (isTimerRunning && timeRemaining > 0) {
+      timerIntervalRef.current = window.setInterval(() => {
+        setTimeRemaining(prev => {
+          if (prev <= 1) {
+            playAlarm();
+            setIsTimerRunning(false);
+            if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current);
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => {
+      if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current);
+    };
+  }, [isTimerRunning, timeRemaining]);
+
+
+  // --- Core Functions ---
+  const playAlarm = () => {
+    if (alarmAudioRef.current) {
+      alarmAudioRef.current.currentTime = 0;
+      alarmAudioRef.current.play().catch(err => console.warn('Alarm play error', err));
+    }
+  };
+
   const drawFrequency = () => {
     const canvas = canvasRef.current;
     const analyser = analyserRef.current;
     if (!canvas || !analyser) return;
-
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
-
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-
     const { width, height } = canvas;
     ctx.clearRect(0, 0, width, height);
-
-    const barWidth = width / bufferLength;
-    let x = 0;
-    
-    // Modern UI uses a different color
+    const barWidth = 3;
+    const barSpacing = 2;
+    const numBars = Math.floor(width / (barWidth + barSpacing));
+    const step = Math.floor(bufferLength / numBars);
     const barColor = isLightTheme ? '#0062ff' : '#4f8eff';
-
-    for (let i = 0; i < bufferLength; i++) {
-        const v = dataArray[i] / 255.0;
+    ctx.fillStyle = barColor;
+    for (let i = 0; i < numBars; i++) {
+        const v = dataArray[i * step] / 255.0;
         const barHeight = v * height;
-        ctx.fillStyle = barColor;
-        // Rounded bars for a softer look
-        ctx.fillRect(x, height - barHeight, barWidth, barHeight); 
-        x += barWidth + 2; // Add spacing between bars
+        const x = i * (barWidth + barSpacing);
+        ctx.fillRect(x, height - barHeight, barWidth, barHeight);
     }
   };
-
 
   const detectWhistle = () => {
     if (!analyserRef.current || !audioContextRef.current) return;
     const analyser = analyserRef.current;
-    const audioCtx = audioContextRef.current;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-
-    const sampleRate = audioCtx.sampleRate;
-    const fftSize = analyser.fftSize;
-    const WHISTLE_FREQ_MIN = 5000;
-    const WHISTLE_FREQ_MAX = 16000;
+    const WHISTLE_FREQ_MIN = 2000;
+    const WHISTLE_FREQ_MAX = 8000;
     const WHISTLE_THRESHOLD = 180;
-    const DEBOUNCE_TIME = 1200;
-
-    const binToFreq = (bin: number) => (bin * sampleRate) / fftSize;
+    const DEBOUNCE_TIME = 1500;
+    const binToFreq = (bin: number) => (bin * audioContextRef.current!.sampleRate) / analyser.fftSize;
     let peakValue = 0;
     for (let i = 0; i < bufferLength; i++) {
       const freq = binToFreq(i);
-      if (freq < WHISTLE_FREQ_MIN) continue;
-      if (freq > WHISTLE_FREQ_MAX) break;
-      if (dataArray[i] > peakValue) {
+      if (freq >= WHISTLE_FREQ_MIN && freq <= WHISTLE_FREQ_MAX && dataArray[i] > peakValue) {
         peakValue = dataArray[i];
       }
     }
-
     drawFrequency();
-
-    if (peakValue > WHISTLE_THRESHOLD) {
-      const now = Date.now();
-      if (now - lastWhistleTimeRef.current > DEBOUNCE_TIME) {
-        lastWhistleTimeRef.current = now;
-        setWhistleCount(prev => {
-          const newCount = prev + 1;
-          if (newCount >= whistleTarget) {
-            playAlarm();
-            stopListening();
-          }
-          return newCount;
-        });
-      }
+    if (peakValue > WHISTLE_THRESHOLD && Date.now() - lastWhistleTimeRef.current > DEBOUNCE_TIME) {
+      lastWhistleTimeRef.current = Date.now();
+      setWhistleCount(prev => {
+        const newCount = prev + 1;
+        if (newCount >= whistleTarget) {
+          playAlarm();
+          stopListening();
+        }
+        return newCount;
+      });
     }
     animationFrameRef.current = requestAnimationFrame(detectWhistle);
   };
@@ -165,7 +195,6 @@ const App: React.FC = () => {
       analyserRef.current.fftSize = 2048;
       mediaStreamSourceRef.current = audioContextRef.current.createMediaStreamSource(stream);
       mediaStreamSourceRef.current.connect(analyserRef.current);
-
       setWhistleCount(0);
       setIsListening(true);
       lastWhistleTimeRef.current = 0;
@@ -180,54 +209,21 @@ const App: React.FC = () => {
     if (!isListening) return;
     if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
     if (mediaStreamSourceRef.current) {
-      (mediaStreamSourceRef.current.mediaStream as MediaStream).getTracks().forEach(t => t.stop());
+      mediaStreamSourceRef.current.mediaStream.getTracks().forEach(t => t.stop());
     }
     if (audioContextRef.current && audioContextRef.current.state !== 'closed') {
       audioContextRef.current.close();
     }
-    audioContextRef.current = null;
-    analyserRef.current = null;
-    mediaStreamSourceRef.current = null;
-    animationFrameRef.current = null;
     setIsListening(false);
   };
 
-  // --- Timer Functions ---
-  useEffect(() => {
-    if (isTimerRunning && timeRemaining > 0) {
-      timerIntervalRef.current = window.setInterval(() => {
-        setTimeRemaining(prev => {
-          if (prev <= 1) {
-            playAlarm();
-            setIsTimerRunning(false);
-            if (timerIntervalRef.current) {
-              window.clearInterval(timerIntervalRef.current);
-              timerIntervalRef.current = null;
-            }
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    }
-    return () => {
-      if (timerIntervalRef.current) {
-        window.clearInterval(timerIntervalRef.current);
-        timerIntervalRef.current = null;
-      }
-    };
-  }, [isTimerRunning, timeRemaining]);
-
   const handleStartTimer = () => {
-    const minutes = parseInt(timerInputMinutes, 10) || 0;
-    const seconds = parseInt(timerInputSeconds, 10) || 0;
-    const totalSeconds = minutes * 60 + seconds;
+    const totalSeconds = (parseInt(timerInputMinutes, 10) || 0) * 60 + (parseInt(timerInputSeconds, 10) || 0);
     if (totalSeconds > 0) {
       setTimeRemaining(totalSeconds);
       setIsTimerRunning(true);
     }
   };
-
   const handlePauseTimer = () => setIsTimerRunning(false);
   const handleResetTimer = () => {
     setIsTimerRunning(false);
@@ -235,23 +231,15 @@ const App: React.FC = () => {
     setTimerInputMinutes('10');
     setTimerInputSeconds('00');
   };
+  const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
-  const formatTime = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
-  };
-
-  // --- Chatbot Functions ---
   const handleSendMessage = (e: React.FormEvent) => {
     e.preventDefault();
     if (!chatInput.trim() || isLoading) return;
-
     const newUserMessage: Message = { sender: 'user', text: chatInput };
     setMessages(prev => [...prev, newUserMessage]);
     setChatInput('');
     setIsLoading(true);
-
     setTimeout(() => {
       const aiMessage: Message = { sender: 'ai', text: `You asked: "${newUserMessage.text}". For real recipes, please use the Recipes tab.` };
       setMessages(prev => [...prev, aiMessage]);
@@ -259,59 +247,67 @@ const App: React.FC = () => {
     }, 700);
   };
 
-  // --- Play Alarm ---
-  const playAlarm = () => {
-    if (alarmAudioRef.current) {
-      try {
-        alarmAudioRef.current.currentTime = 0;
-        alarmAudioRef.current.play();
-      } catch (err) {
-        console.warn('Alarm play error', err);
-      }
-    }
-  };
-
-  // --- Recipe generation (calls backend) ---
+  // UPDATED to handle structured JSON recipe
   const requestRecipeFromAI = async () => {
-    setRecipeOutput('');
+    setRecipeOutput(null);
+    setRecipeError(null);
     setRecipeLoading(true);
     try {
-      const resp = await fetch('http://localhost:3001/api/ai-recipe', { // Assuming local dev server
+      const resp = await fetch('http://localhost:3001/api/ai-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          cooker: cookerType,
-          ingredients: ingredientsInput.trim(),
-        }),
+        body: JSON.stringify({ cooker: cookerType, ingredients: ingredientsInput.trim() }),
       });
-
-      if (!resp.ok) throw new Error(`Server returned ${resp.status}`);
-      const data = await resp.json();
-      if (data.recipe) {
-        setRecipeOutput(data.recipe);
-      } else {
-        throw new Error('Bad response from server');
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => null);
+        throw new Error(errorData?.error || `Server error: ${resp.status}`);
       }
-    } catch (err) {
+      const data = await resp.json();
+      if (data.error) throw new Error(data.error);
+      setRecipeOutput(data);
+    } catch (err: unknown) {
       console.error('AI recipe error:', err);
-      setRecipeOutput(fallbackRecipe(cookerType, ingredientsInput));
+      if (err instanceof Error) {
+        setRecipeError(err.message);
+      } else {
+        setRecipeError('An unknown error occurred.');
+      }
     } finally {
       setRecipeLoading(false);
     }
   };
 
-  const fallbackRecipe = (cooker: string, ingredients: string) => {
-    const base = ingredients ? `Using: ${ingredients}. ` : '';
-    if (cooker === 'pressure') {
-      return `${base}Pressure-cooker Aloo Curry — Wash and cube potatoes. Saute mustard seeds, curry leaves, onions, ginger-garlic paste. Add potatoes, water (1 cup), salt, turmeric. Close lid and cook for 2 whistles on medium heat. Let pressure release, open and simmer 2–3 min with garam masala. Garnish and serve.`;
+  const handleGetHoroscope = async () => {
+    if (!horoscopeName.trim()) return;
+    setHoroscopeLoading(true);
+    setHoroscopeResult(null);
+    setHoroscopeError(null);
+    try {
+      const resp = await fetch('http://localhost:3001/api/dish-horoscope', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: horoscopeName }),
+      });
+      if (!resp.ok) {
+        const errorData = await resp.json().catch(() => null);
+        throw new Error(errorData?.error || `Server error: ${resp.status}`);
+      }
+      const data = await resp.json();
+      if(data.error) throw new Error(data.error);
+      setHoroscopeResult(data);
+    } catch (err: unknown) {
+      console.error('Horoscope error:', err);
+      if (err instanceof Error) {
+        setHoroscopeError(err.message);
+      } else {
+        setHoroscopeError('An unknown error occurred. Please try again.');
+      }
+    } finally {
+      setHoroscopeLoading(false);
     }
-    if (cooker === 'electric') {
-      return `${base}Electric cooker Vegetable Stew — Add chopped veg, 1 cup water, salt, spices. Set 'Cook' mode for 15–20 minutes. Stir and serve.`;
-    }
-    return `${base}Stovetop Stir-fry — Heat oil, add spices and veg, stir-fry 7–10 minutes. Finish with lemon or garam masala.`;
   };
 
-  // --- Render Functions ---
+  // --- Render Logic ---
   const renderContent = () => {
     switch (activeTab) {
       case 'counter':
@@ -342,9 +338,9 @@ const App: React.FC = () => {
             <p className="subtitle">Set a time and I'll alert you.</p>
             <div className="timer-display">{formatTime(timeRemaining)}</div>
             <div className="input-group timer-inputs" style={{ justifyContent: 'center' }}>
-              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
+              <input type="number" min="0" max="59" value={timerInputMinutes} onChange={e => setTimerInputMinutes(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
               <span>:</span>
-              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(String(e.target.value).padStart(2, '0'))} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
+              <input type="number" min="0" max="59" value={timerInputSeconds} onChange={e => setTimerInputSeconds(e.target.value)} disabled={isTimerRunning || timeRemaining > 0} className="c-input" style={{ textAlign: 'center' }}/>
             </div>
             <div className="button-group">
               <button onClick={handleStartTimer} disabled={isTimerRunning || timeRemaining > 0} className="c-button primary">Start</button>
@@ -359,9 +355,7 @@ const App: React.FC = () => {
             <div className="chat-header"><h2>Chat with Kunjuttan</h2></div>
             <div className="chat-body" ref={chatBodyRef}>
               {messages.map((msg, i) => (
-                <div key={i} className={`chat-message ${msg.sender}`}>
-                  <p>{msg.text}</p>
-                </div>
+                <div key={i} className={`chat-message ${msg.sender}`}><p>{msg.text}</p></div>
               ))}
               {isLoading && <div className="chat-message ai"><p>...</p></div>}
             </div>
@@ -389,23 +383,69 @@ const App: React.FC = () => {
                 <label>Ingredients (comma separated)</label>
                 <input value={ingredientsInput} onChange={e => setIngredientsInput(e.target.value)} className="c-input" placeholder="e.g., potato, onion, tomato" />
               </div>
-              <div className="button-group">
-                <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="c-button primary">
-                  {recipeLoading ? 'Thinking...' : 'Get AI Recipe'}
-                </button>
-                <button onClick={() => setRecipeOutput(fallbackRecipe(cookerType, ingredientsInput))} className="c-button secondary">Quick Recipe</button>
-              </div>
-              <div style={{ textAlign: 'left', whiteSpace: 'pre-wrap' }}>
-                {recipeOutput && (
-                  <>
-                    <h3 style={{ fontSize: 16, fontWeight: 600 }}>Recipe Suggestion:</h3>
-                    <div style={{ background: isLightTheme ? '#fff' : '#2c3035', padding: 12, borderRadius: 8, border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}` }}>
-                      {recipeOutput}
-                    </div>
-                  </>
-                )}
-              </div>
+              <button onClick={requestRecipeFromAI} disabled={recipeLoading} className="c-button primary">
+                {recipeLoading ? 'Thinking...' : 'Get AI Recipe'}
+              </button>
+              {recipeLoading && <p>Generating your recipe...</p>}
+              {recipeError && !recipeLoading && (
+                <div style={{ color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '10px', borderRadius: 8 }}>
+                    <strong>Oops!</strong> {recipeError}
+                </div>
+              )}
+              {recipeOutput && !recipeLoading && (
+                <div style={{ textAlign: 'left', background: isLightTheme ? '#fff' : '#2c3035', padding: '16px', borderRadius: 12, border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}` }}>
+                  <h3 style={{ marginTop: 0, fontSize: 18 }}>{recipeOutput.recipe_name}</h3>
+                  <p style={{ fontStyle: 'italic', color: isLightTheme ? '#5f6b7a' : '#a0a7b0' }}>{recipeOutput.description}</p>
+                  <h4 style={{ marginBottom: '8px' }}>Steps:</h4>
+                  <ol style={{ paddingLeft: '20px', margin: 0 }}>
+                    {recipeOutput.steps.map((step, i) => <li key={i} style={{ marginBottom: '8px' }}>{step}</li>)}
+                  </ol>
+                </div>
+              )}
             </div>
+          </div>
+        );
+      case 'horoscope':
+        return (
+          <div className="feature-content">
+            <h2>Personality Dish Horoscope</h2>
+            <p className="subtitle">Discover your inner dish!</p>
+            <div className="input-group" style={{ maxWidth: 340 }}>
+              <input
+                type="text"
+                value={horoscopeName}
+                onChange={(e) => setHoroscopeName(e.target.value)}
+                placeholder="Enter a name..."
+                className="c-input"
+                disabled={horoscopeLoading}
+                onKeyDown={(e) => e.key === 'Enter' && handleGetHoroscope()}
+              />
+              <button onClick={handleGetHoroscope} className="c-button primary" disabled={horoscopeLoading}>
+                {horoscopeLoading ? '...' : 'Reveal'}
+              </button>
+            </div>
+            {horoscopeLoading && <p>Finding your soul dish...</p>}
+            {horoscopeError && !horoscopeLoading && (
+                <div style={{ marginTop: 20, color: '#ff4d4d', background: 'rgba(255, 77, 77, 0.1)', padding: '10px', borderRadius: 8, width: '100%', maxWidth: 340 }}>
+                    <strong>Oops!</strong> {horoscopeError}
+                </div>
+            )}
+            {horoscopeResult && !horoscopeLoading && (
+              <div style={{ marginTop: 20, padding: '16px 20px', borderRadius: 12, background: isLightTheme ? '#fff' : '#2c3035', border: `1px solid ${isLightTheme ? '#dde3ea' : '#3a4046'}`, textAlign: 'left', width: '100%', maxWidth: 340, animation: 'fadeIn 0.5s ease-in-out' }}>
+                <h3 style={{ fontSize: 20, fontWeight: 700, margin: '0 0 4px 0', color: isLightTheme ? 'var(--primary-light)' : 'var(--primary-dark)' }}>
+                  {horoscopeResult.dishName}
+                </h3>
+                <p style={{ fontSize: 14, color: isLightTheme ? 'var(--text-secondary-light)' : 'var(--text-secondary-dark)', margin: '0 0 16px 0', fontStyle: 'italic' }}>
+                  ({horoscopeResult.origin})
+                </p>
+                <p style={{ margin: '0 0 12px 0', lineHeight: 1.5 }}>
+                  <strong>Dish Analysis:</strong> {horoscopeResult.dishAnalysis}
+                </p>
+                <p style={{ margin: 0, lineHeight: 1.5 }}>
+                  <strong>Personality Reading:</strong> {horoscopeResult.personalityReading}
+                </p>
+              </div>
+            )}
           </div>
         );
       default:
@@ -426,11 +466,15 @@ const App: React.FC = () => {
         <nav className="app-nav">
           <button className={`nav-button ${activeTab === 'counter' ? 'active' : ''}`} onClick={() => setActiveTab('counter')}>Counter</button>
           <button className={`nav-button ${activeTab === 'timer' ? 'active' : ''}`} onClick={() => setActiveTab('timer')}>Timer</button>
-          <button className={`nav-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Chat</button>
           <button className={`nav-button ${activeTab === 'recipes' ? 'active' : ''}`} onClick={() => setActiveTab('recipes')}>Recipes</button>
+          <button className={`nav-button ${activeTab === 'horoscope' ? 'active' : ''}`} onClick={() => setActiveTab('horoscope')}>Horoscope</button>
+          <button className={`nav-button ${activeTab === 'chat' ? 'active' : ''}`} onClick={() => setActiveTab('chat')}>Chat</button>
         </nav>
         <main className="app-content">{renderContent()}</main>
       </div>
+      <style>{`
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+      `}</style>
     </div>
   );
 };
