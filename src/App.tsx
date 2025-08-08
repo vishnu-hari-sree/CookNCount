@@ -1,4 +1,3 @@
-// src/App.tsx
 import React, { useState, useEffect, useRef } from 'react';
 
 // --- Helper Types ---
@@ -126,6 +125,12 @@ const App: React.FC = () => {
       alarmAudioRef.current.play().catch(err => console.warn('Alarm play error', err));
     }
   };
+  const stopAlarm = () => {
+    if (alarmAudioRef.current) {
+      alarmAudioRef.current.pause();
+      alarmAudioRef.current.currentTime = 0;
+    }
+  };
 
   const drawFrequency = () => {
     const canvas = canvasRef.current;
@@ -158,8 +163,8 @@ const App: React.FC = () => {
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
     analyser.getByteFrequencyData(dataArray);
-    const WHISTLE_FREQ_MIN = 2000;
-    const WHISTLE_FREQ_MAX = 8000;
+    const WHISTLE_FREQ_MIN = 5000;
+    const WHISTLE_FREQ_MAX = 10000;
     const WHISTLE_THRESHOLD = 180;
     const DEBOUNCE_TIME = 1500;
     const binToFreq = (bin: number) => (bin * audioContextRef.current!.sampleRate) / analyser.fftSize;
@@ -215,6 +220,7 @@ const App: React.FC = () => {
       audioContextRef.current.close();
     }
     setIsListening(false);
+    stopAlarm();
   };
 
   const handleStartTimer = () => {
@@ -230,6 +236,7 @@ const App: React.FC = () => {
     setTimeRemaining(0);
     setTimerInputMinutes('10');
     setTimerInputSeconds('00');
+    stopAlarm();
   };
   const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
 
