@@ -13,11 +13,10 @@ type Message = {
   text: string;
 };
 
-type ActiveTab = 'counter' | 'timer' | 'chat' | 'recipes' | 'horoscope';
+type ActiveTab = 'counter' | 'timer' | 'chat' | 'recipes' | 'horoscope' | 'music';
 
 type CookerType = 'pressure' | 'stovetop' | 'electric';
 
-// Type for the structured recipe response
 type RecipeResult = {
   recipe_name: string;
   description: string;
@@ -30,6 +29,32 @@ type HoroscopeResult = {
   dishAnalysis: string;
   personalityReading: string;
 } | null;
+
+// --- Music Feature Types and Data ---
+type Song = {
+  title: string;
+  artist: string;
+  src: string;      // Path to audio file in /public/music/
+  artwork: string;  // Path to artwork image in /public/art/
+};
+type MusicCategory = 'melody' | 'rock' | 'normal';
+
+// IMPORTANT: Replace these with your actual file names
+const playlists: Record<MusicCategory, Song[]> = {
+  melody: [
+    { title: "Sahiba", artist: "Aditya Rikhari", src: "/music/melody1.mp3", artwork: "/art/melody1.png" },
+    { title: "Jhol", artist: "Annural Khalid", src: "/music/melody2.mp3", artwork: "/art/melody2.png" },
+    { title: "Mudal Nee", artist: "Sid Sriram", src: "/music/melody3.mp3", artwork: "/art/melody3.png" },
+  ],
+  rock: [
+    { title: "Badtameezdal", artist: "Benny Dayal", src: "/music/rock1.mp3", artwork: "/art/rock1.png" },
+    { title: "Don Don Don", artist: "Anirudh", src: "/music/rock2.mp3", artwork: "/art/rock2.png" },
+  ],
+  normal: [
+    { title: "City Vibes", artist: "Urban Flow", src: "/music/normal1.mp3", artwork: "/art/normal1.png" },
+    { title: "Morning Coffee", artist: "The Casuals", src: "/music/normal2.mp3", artwork: "/art/normal2.png" },
+  ],
+};
 
 
 // --- Main App Component ---
@@ -69,6 +94,14 @@ const App: React.FC = () => {
   const [horoscopeLoading, setHoroscopeLoading] = useState<boolean>(false);
   const [horoscopeError, setHoroscopeError] = useState<string | null>(null);
 
+  // Music Player State
+  const [musicCategory, setMusicCategory] = useState<MusicCategory | null>(null);
+  const [currentTrackIndex, setCurrentTrackIndex] = useState<number | null>(null);
+  const [isPlaying, setIsPlaying] = useState<boolean>(false);
+  const [volume, setVolume] = useState<number>(0.75);
+  const [currentTime, setCurrentTime] = useState<number>(0);
+  const [duration, setDuration] = useState<number>(0);
+
   // --- Refs ---
   const audioContextRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
@@ -79,6 +112,7 @@ const App: React.FC = () => {
   const timerIntervalRef = useRef<number | null>(null);
   const chatBodyRef = useRef<HTMLDivElement | null>(null);
   const alarmAudioRef = useRef<HTMLAudioElement | null>(null);
+  const musicAudioRef = useRef<HTMLAudioElement | null>(null);
 
 
   // --- Effects ---
@@ -116,6 +150,35 @@ const App: React.FC = () => {
       if (timerIntervalRef.current) window.clearInterval(timerIntervalRef.current);
     };
   }, [isTimerRunning, timeRemaining]);
+
+  // Music Player Effects
+  useEffect(() => {
+    if (isPlaying) {
+      musicAudioRef.current?.play().catch(e => console.error("Audio play failed", e));
+    } else {
+      musicAudioRef.current?.pause();
+    }
+  }, [isPlaying, currentTrackIndex]); // Re-run when track changes
+
+  useEffect(() => {
+    if(musicAudioRef.current) musicAudioRef.current.volume = volume;
+  }, [volume]);
+
+  useEffect(() => {
+    const audio = musicAudioRef.current;
+    if (audio) {
+      const setAudioData = () => setDuration(audio.duration);
+      const setAudioTime = () => setCurrentTime(audio.currentTime);
+
+      audio.addEventListener("loadedmetadata", setAudioData);
+      audio.addEventListener("timeupdate", setAudioTime);
+
+      return () => {
+        audio.removeEventListener("loadedmetadata", setAudioData);
+        audio.removeEventListener("timeupdate", setAudioTime);
+      };
+    }
+  }, []);
 
 
   // --- Core Functions ---
@@ -241,7 +304,13 @@ const App: React.FC = () => {
     stopAlarm();
   };
 
-  const formatTime = (seconds: number) => `${String(Math.floor(seconds / 60)).padStart(2, '0')}:${String(seconds % 60).padStart(2, '0')}`;
+  const formatTime = (seconds: number) => {
+    const flooredSeconds = Math.floor(seconds);
+    if (isNaN(flooredSeconds)) return "00:00";
+    const m = String(Math.floor(flooredSeconds / 60)).padStart(2, '0');
+    const s = String(flooredSeconds % 60).padStart(2, '0');
+    return `${m}:${s}`;
+  };
 
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -336,9 +405,102 @@ const App: React.FC = () => {
     }
   };
 
+  // --- Music Player Functions ---
+  const handleCategorySelect = (category: MusicCategory) => {
+    setMusicCategory(category);
+    const playlist = playlists[category];
+    if (playlist.length === 0) return;
+    const randomIndex = Math.floor(Math.random() * playlist.length);
+    setCurrentTrackIndex(randomIndex);
+    setIsPlaying(true);
+  };
+
+  const handlePlayPause = () => {
+    if (!currentTrack) return;
+    setIsPlaying(!isPlaying);
+  };
+
+  const handleNextTrack = () => {
+    if (!musicCategory || currentTrackIndex === null) return;
+    const playlist = playlists[musicCategory];
+    if (playlist.length === 0) return;
+    const nextIndex = (currentTrackIndex + 1) % playlist.length;
+    setCurrentTrackIndex(nextIndex);
+    setIsPlaying(true);
+  };
+
+  const handlePrevTrack = () => {
+    if (!musicCategory || currentTrackIndex === null) return;
+    const playlist = playlists[musicCategory];
+    if (playlist.length === 0) return;
+    const prevIndex = (currentTrackIndex - 1 + playlist.length) % playlist.length;
+    setCurrentTrackIndex(prevIndex);
+    setIsPlaying(true);
+  };
+
+  const handleShuffle = () => {
+    if(!musicCategory) return;
+    handleCategorySelect(musicCategory);
+  };
+
+  const handleVolumeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setVolume(parseFloat(e.target.value));
+  };
+
+  const handleProgressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if(musicAudioRef.current) {
+        musicAudioRef.current.currentTime = parseFloat(e.target.value);
+        setCurrentTime(musicAudioRef.current.currentTime);
+    }
+  };
+
+  const currentTrack = musicCategory && currentTrackIndex !== null ? playlists[musicCategory][currentTrackIndex] : null;
+
+
   // --- Render Logic ---
   const renderContent = () => {
     switch (activeTab) {
+      case 'music':
+        return (
+          <div className="feature-content music-player">
+            {!musicCategory ? (
+              <div className="category-selector">
+                <h2>Select a Mood</h2>
+                <button className="c-button pixel-border" onClick={() => handleCategorySelect('melody')}>Melody</button>
+                <button className="c-button pixel-border" onClick={() => handleCategorySelect('rock')}>Rock</button>
+                <button className="c-button pixel-border" onClick={() => handleCategorySelect('normal')}>Normal</button>
+              </div>
+            ) : (
+              currentTrack && (
+                <div className="now-playing-view">
+                    <img src={currentTrack.artwork} alt={currentTrack.title} className="album-art pixel-border"/>
+                    <div className="track-info">
+                        <h3>{currentTrack.title}</h3>
+                        <p>{currentTrack.artist}</p>
+                    </div>
+                    <div className="progress-bar-container">
+                        <span>{formatTime(currentTime)}</span>
+                        <input type="range" className="progress-bar" min="0" max={duration} value={currentTime} onChange={handleProgressChange} />
+                        <span>{formatTime(duration)}</span>
+                    </div>
+                    <div className="playback-controls">
+                        <button className="c-button pixel-border" onClick={handlePrevTrack}>Prev</button>
+                        <button className="c-button pixel-border primary" onClick={handlePlayPause}>{isPlaying ? 'Pause' : 'Play'}</button>
+                        <button className="c-button pixel-border" onClick={handleNextTrack}>Next</button>
+                    </div>
+                    <div className="extra-controls">
+                        <button className="c-button pixel-border" onClick={handleShuffle}>Shuffle</button>
+                        <div className="volume-control">
+                            <span>Vol:</span>
+                            <input type="range" min="0" max="1" step="0.05" value={volume} onChange={handleVolumeChange}/>
+                        </div>
+                    </div>
+                    <button className="c-button pixel-border secondary-action" onClick={() => { setIsPlaying(false); setMusicCategory(null); setCurrentTrackIndex(null); }}>Change Mood</button>
+                </div>
+              )
+            )}
+          </div>
+        );
       case 'counter':
         return (
           <div className="feature-content">
@@ -470,11 +632,13 @@ const App: React.FC = () => {
     }
   };
   
-  const TABS: ActiveTab[] = ['counter', 'timer', 'recipes', 'horoscope', 'chat'];
+  const TABS: ActiveTab[] = ['counter', 'timer', 'recipes', 'horoscope', 'music', 'chat'];
 
   return (
     <div className={isLightTheme ? 'light' : ''}>
       <audio ref={alarmAudioRef} src="/alarm.mp3" preload="auto" />
+      <audio ref={musicAudioRef} src={currentTrack?.src} onEnded={handleNextTrack} />
+
       <div className="main-container">
         <header className="app-header">
           <h1>Cook'n'Count</h1>
