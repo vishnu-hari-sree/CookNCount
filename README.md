@@ -51,17 +51,7 @@ npm run dev
 
 ### Project Documentation
 For Software:
-
-# Screenshots (Add at least 3)
-![Screenshot1](Add screenshot 1 here with proper name)
-*Add caption explaining what this shows*
-
-![Screenshot2](Add screenshot 2 here with proper name)
-*Add caption explaining what this shows*
-
-![Screenshot3](Add screenshot 3 here with proper name)
-*Add caption explaining what this shows*
-
+Hosted Link - https://cook-n-count.vercel.app/
 # Diagrams
 ```mermaid
 graph TD
@@ -131,32 +121,7 @@ style C_H fill:#FF6347,stroke:#8B0000,stroke-width:2px
 C --> C_Chat
 style C_Chat fill:#20B2AA,stroke:#006666,stroke-width:2px
 ```
-For Hardware:
 
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
-
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
-
-# Build Photos
-![Components](Add photo of your components here)
-*List out all components shown*
-
-![Build](Add photos of build process here)
-*Explain the build steps*
-
-![Final](Add photo of final product here)
-*Explain the final build*
-
-### Project Demo
-# Video
-[Add your demo video link here]
-*Explain what the video demonstrates*
-
-# Additional Demos
-[Add any extra demo materials/links]
 
 
 ---
