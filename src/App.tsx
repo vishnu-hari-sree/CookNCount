@@ -47,7 +47,7 @@ const playlists: Record<MusicCategory, Song[]> = {
     { title: "Mudal Nee", artist: "Sid Sriram", src: "/music/melody3.mp3", artwork: "/art/melody3.png" },
   ],
   rock: [
-    { title: "Badtameezdal", artist: "Benny Dayal", src: "/music/rock1.mp3", artwork: "/art/rock1.png" },
+    { title: "Badtameez Dil", artist: "Benny Dayal", src: "/music/rock1.mp3", artwork: "/art/rock1.png" },
     { title: "Don Don Don", artist: "Anirudh", src: "/music/rock2.mp3", artwork: "/art/rock2.png" },
   ],
   normal: [
@@ -179,7 +179,6 @@ const App: React.FC = () => {
       };
     }
   }, []);
-
 
   // --- Core Functions ---
   const playAlarm = () => {
@@ -323,7 +322,8 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const resp = await fetch('http://localhost:3001/api/chat', {
+      // UPDATED: Using relative path
+      const resp = await fetch('/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userInput }),
@@ -351,7 +351,8 @@ const App: React.FC = () => {
     setRecipeError(null);
     setRecipeLoading(true);
     try {
-      const resp = await fetch('http://localhost:3001/api/ai-recipe', {
+      // UPDATED: Using relative path
+      const resp = await fetch('/api/ai-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cooker: cookerType, ingredients: ingredientsInput.trim() }),
@@ -381,7 +382,8 @@ const App: React.FC = () => {
     setHoroscopeResult(null);
     setHoroscopeError(null);
     try {
-      const resp = await fetch('http://localhost:3001/api/dish-horoscope', {
+      // UPDATED: Using relative path
+      const resp = await fetch('/api/dish-horoscope', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: horoscopeName }),
@@ -456,19 +458,29 @@ const App: React.FC = () => {
 
   const currentTrack = musicCategory && currentTrackIndex !== null ? playlists[musicCategory][currentTrackIndex] : null;
 
-
   // --- Render Logic ---
   const renderContent = () => {
     switch (activeTab) {
       case 'music':
+        const CATEGORIES: MusicCategory[] = ['melody', 'rock', 'normal'];
         return (
           <div className="feature-content music-player">
             {!musicCategory ? (
               <div className="category-selector">
                 <h2>Select a Mood</h2>
-                <button className="c-button pixel-border" onClick={() => handleCategorySelect('melody')}>Melody</button>
-                <button className="c-button pixel-border" onClick={() => handleCategorySelect('rock')}>Rock</button>
-                <button className="c-button pixel-border" onClick={() => handleCategorySelect('normal')}>Normal</button>
+                <div className="category-grid">
+                  {CATEGORIES.map(cat => (
+                    <button
+                      key={cat}
+                      className="category-card pixel-border"
+                      style={{ backgroundImage: `url(${playlists[cat][0].artwork})` }}
+                      onClick={() => handleCategorySelect(cat)}
+                    >
+                      <div className="category-card-overlay"></div>
+                      <span>{cat.charAt(0).toUpperCase() + cat.slice(1)}</span>
+                    </button>
+                  ))}
+                </div>
               </div>
             ) : (
               currentTrack && (
