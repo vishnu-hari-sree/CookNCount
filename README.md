@@ -51,7 +51,9 @@ npm run dev
 
 ### Project Documentation
 For Software:
-Hosted Link - https://cook-n-count.vercel.app/
+
+-Hosted Link - https://cook-n-count.vercel.app/
+-Youtube Video - https://youtu.be/5Qv9MCSL8fI
 # Diagrams
 ```mermaid
 graph TD
