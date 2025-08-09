@@ -13,7 +13,7 @@
 - Member 2: Vishnu M - NSS College of Engineering Palakkad
 
 ### Project Description
-Level up your cooking with Cook'n'Count, your kitchen assistant! It automatically counts cooker whistles, runs perfect timers, and generates AI-powered recipes when you're out of ideas. Discover your "personality dish" with our fun food horoscope, chill out with retro chiptunes from the music player, and get instant advice from our friendly AI chef, "Kunjuttan."
+Level up your cooking with Cook'n'Count, your pixel kitchen assistant! It automatically counts cooker whistles, runs perfect timers, and generates AI-powered recipes when you're out of ideas. Discover your "personality dish" with our fun food horoscope, chill out with retro chiptunes from the music player, and get instant advice from our friendly AI chef, "Kunjuttan."
 
 ### The Problem (that doesn't exist)
 Ever forgot how many whistles your cooker made while you were busy scrolling memes?
@@ -63,7 +63,6 @@ For Software:
 *Add caption explaining what this shows*
 
 # Diagrams
-# Diagrams
 ```mermaid
 graph TD
 
@@ -102,13 +101,13 @@ B -->|Audio Stream| C_WC
 
 %% Whistle Counter
 C --> C_WC
-style C_WC fill:#FFEB99,stroke:#B58900,stroke-width:2px
+style C_WC fill:#FFD700,stroke:#FF8C00,stroke-width:2px
 
 %% Timer & Music
 C --> C_T
 C --> C_M
-style C_T fill:#B3FFB3,stroke:#228B22,stroke-width:2px
-style C_M fill:#D1B3FF,stroke:#6A0DAD,stroke-width:2px
+style C_T fill:#00FA9A,stroke:#006400,stroke-width:2px
+style C_M fill:#9370DB,stroke:#4B0082,stroke-width:2px
 
 %% Recipe Flow
 C -->|Request Recipe| C_R
@@ -117,7 +116,7 @@ D_R -->|Send Prompt| E
 E -->|Recipe JSON| D_R
 D_R --> C_R
 C_R -->|Update UI| C
-style C_R fill:#99CCFF,stroke:#005F99,stroke-width:2px
+style C_R fill:#1E90FF,stroke:#00008B,stroke-width:2px
 
 %% Horoscope Flow
 C -->|Request Horoscope| C_H
@@ -126,11 +125,20 @@ D_H -->|Send Prompt| E
 E -->|Horoscope JSON| D_H
 D_H --> C_H
 C_H -->|Update UI| C
-style C_H fill:#FFB3B3,stroke:#CC0000,stroke-width:2px
+style C_H fill:#FF6347,stroke:#8B0000,stroke-width:2px
 
 %% Chat Flow
 C --> C_Chat
-style C_Chat fill:#A7F3D0,stroke:#0F766E,stroke-width:2px
+style C_Chat fill:#20B2AA,stroke:#006666,stroke-width:2px
+```
+For Hardware:
+
+# Schematic & Circuit
+![Circuit](Add your circuit diagram here)
+*Add caption explaining connections*
+
+![Schematic](Add your schematic diagram here)
+*Add caption explaining the schematic*
 
 # Build Photos
 ![Components](Add photo of your components here)
