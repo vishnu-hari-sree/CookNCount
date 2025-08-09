@@ -11,10 +11,9 @@
 ### Team Members
 - Team Lead: Mihikka S - NSS College of Engineering Palakkad
 - Member 2: Vishnu M - NSS College of Engineering Palakkad
-- Member 3: [Name] - [College]
 
 ### Project Description
-Cook N Count is a pixel-themed cooking assistant that listens to your cooker whistles, counts them automatically, runs a cooking timer, and even gives you cooking advice via our chatbot “Kunjuttan.” Basically, it’s like having a retro video game chef watching your pot — and cheering when your dish is done.
+Level up your cooking with Cook'n'Count, your kitchen assistant! It automatically counts cooker whistles, runs perfect timers, and generates AI-powered recipes when you're out of ideas. Discover your "personality dish" with our fun food horoscope, chill out with retro chiptunes from the music player, and get instant advice from our friendly AI chef, "Kunjuttan."
 
 ### The Problem (that doesn't exist)
 Ever forgot how many whistles your cooker made while you were busy scrolling memes?
@@ -64,17 +63,74 @@ For Software:
 *Add caption explaining what this shows*
 
 # Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Add caption explaining your workflow*
+# Diagrams
+```mermaid
+graph TD
 
-For Hardware:
+%% ==== USER SIDE ====
+subgraph "User's Device"
+    A[Browser]
+    B(Microphone)
+end
 
-# Schematic & Circuit
-![Circuit](Add your circuit diagram here)
-*Add caption explaining connections*
+%% ==== FRONTEND ====
+subgraph "Frontend (Netlify)"
+    C{React App UI}
+    C_WC[Whistle Counter]
+    C_T[Timer]
+    C_M[Music Player]
+    C_R[Recipe Helper]
+    C_H[Dish Horoscope]
+    C_Chat[Ask Kunjuttan]
+end
 
-![Schematic](Add your schematic diagram here)
-*Add caption explaining the schematic*
+%% ==== BACKEND ====
+subgraph "Backend (Render)"
+    D(Node.js Server)
+    D_R["/api/ai-recipe"]
+    D_H["/api/dish-horoscope"]
+end
+
+%% ==== EXTERNAL ====
+subgraph "External Services"
+    E(Google AI API)
+end
+
+%% ==== FLOWS ====
+A -->|Interacts with UI| C
+B -->|Audio Stream| C_WC
+
+%% Whistle Counter
+C --> C_WC
+style C_WC fill:#FFEB99,stroke:#B58900,stroke-width:2px
+
+%% Timer & Music
+C --> C_T
+C --> C_M
+style C_T fill:#B3FFB3,stroke:#228B22,stroke-width:2px
+style C_M fill:#D1B3FF,stroke:#6A0DAD,stroke-width:2px
+
+%% Recipe Flow
+C -->|Request Recipe| C_R
+C_R -->|POST| D_R
+D_R -->|Send Prompt| E
+E -->|Recipe JSON| D_R
+D_R --> C_R
+C_R -->|Update UI| C
+style C_R fill:#99CCFF,stroke:#005F99,stroke-width:2px
+
+%% Horoscope Flow
+C -->|Request Horoscope| C_H
+C_H -->|POST| D_H
+D_H -->|Send Prompt| E
+E -->|Horoscope JSON| D_H
+D_H --> C_H
+C_H -->|Update UI| C
+style C_H fill:#FFB3B3,stroke:#CC0000,stroke-width:2px
+
+%% Chat Flow
+C --> C_Chat
+style C_Chat fill:#A7F3D0,stroke:#0F766E,stroke-width:2px
 
 # Build Photos
 ![Components](Add photo of your components here)
