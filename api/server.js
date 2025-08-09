@@ -143,3 +143,7 @@ app.post('/api/chat', async (req, res) => {
 app.listen(port, () => {
   console.log(`🤖 Backend server running at http://localhost:${port}`);
 });
+
+export default function handler(req, res) {
+  res.status(200).json({ message: 'Hello from serverless!' });
+}
