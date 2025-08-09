@@ -10,7 +10,7 @@ export default defineConfig({
     proxy: {
       // Proxy requests from /api to your backend server
       '/api': {
-        target: 'http://localhost:3001', // Your backend server URL
+        target: 'https://cookncount.onrender.com/', // Your backend server URL
         changeOrigin: true,
       },
     },

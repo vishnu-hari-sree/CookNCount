@@ -6,7 +6,23 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 const app = express();
 const port = 3001;
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:3000",
+  "https://cook-n-count.vercel.app"
+];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    } else {
+      return callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true // if you need cookies or auth headers
+}));
 app.use(express.json());
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);

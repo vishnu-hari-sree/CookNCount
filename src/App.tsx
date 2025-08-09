@@ -323,7 +323,7 @@ const App: React.FC = () => {
     setIsLoading(true);
 
     try {
-      const resp = await fetch('http://localhost:3001/api/chat', {
+      const resp = await fetch('https://cookncount.onrender.com/api/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: userInput }),
@@ -351,7 +351,7 @@ const App: React.FC = () => {
     setRecipeError(null);
     setRecipeLoading(true);
     try {
-      const resp = await fetch('http://localhost:3001/api/ai-recipe', {
+      const resp = await fetch('https://cookncount.onrender.com/api/ai-recipe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cooker: cookerType, ingredients: ingredientsInput.trim() }),
@@ -381,7 +381,7 @@ const App: React.FC = () => {
     setHoroscopeResult(null);
     setHoroscopeError(null);
     try {
-      const resp = await fetch('http://localhost:3001/api/dish-horoscope', {
+      const resp = await fetch('https://cookncount.onrender.com/api/dish-horoscope', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: horoscopeName }),
