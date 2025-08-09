@@ -11,10 +11,9 @@
 ### Team Members
 - Team Lead: Mihikka S - NSS College of Engineering Palakkad
 - Member 2: Vishnu M - NSS College of Engineering Palakkad
-- Member 3: [Name] - [College]
 
 ### Project Description
-Cook N Count is a pixel-themed cooking assistant that listens to your cooker whistles, counts them automatically, runs a cooking timer, and even gives you cooking advice via our chatbot “Kunjuttan.” Basically, it’s like having a retro video game chef watching your pot — and cheering when your dish is done.
+Level up your cooking with Cook'n'Count, your pixel kitchen assistant! It automatically counts cooker whistles, runs perfect timers, and generates AI-powered recipes when you're out of ideas. Discover your "personality dish" with our fun food horoscope, chill out with retro chiptunes from the music player, and get instant advice from our friendly AI chef, "Kunjuttan."
 
 ### The Problem (that doesn't exist)
 Ever forgot how many whistles your cooker made while you were busy scrolling memes?
@@ -64,9 +63,74 @@ For Software:
 *Add caption explaining what this shows*
 
 # Diagrams
-![Workflow](Add your workflow/architecture diagram here)
-*Add caption explaining your workflow*
+```mermaid
+graph TD
 
+%% ==== USER SIDE ====
+subgraph "User's Device"
+    A[Browser]
+    B(Microphone)
+end
+
+%% ==== FRONTEND ====
+subgraph "Frontend (Netlify)"
+    C{React App UI}
+    C_WC[Whistle Counter]
+    C_T[Timer]
+    C_M[Music Player]
+    C_R[Recipe Helper]
+    C_H[Dish Horoscope]
+    C_Chat[Ask Kunjuttan]
+end
+
+%% ==== BACKEND ====
+subgraph "Backend (Render)"
+    D(Node.js Server)
+    D_R["/api/ai-recipe"]
+    D_H["/api/dish-horoscope"]
+end
+
+%% ==== EXTERNAL ====
+subgraph "External Services"
+    E(Google AI API)
+end
+
+%% ==== FLOWS ====
+A -->|Interacts with UI| C
+B -->|Audio Stream| C_WC
+
+%% Whistle Counter
+C --> C_WC
+style C_WC fill:#FFD700,stroke:#FF8C00,stroke-width:2px
+
+%% Timer & Music
+C --> C_T
+C --> C_M
+style C_T fill:#00FA9A,stroke:#006400,stroke-width:2px
+style C_M fill:#9370DB,stroke:#4B0082,stroke-width:2px
+
+%% Recipe Flow
+C -->|Request Recipe| C_R
+C_R -->|POST| D_R
+D_R -->|Send Prompt| E
+E -->|Recipe JSON| D_R
+D_R --> C_R
+C_R -->|Update UI| C
+style C_R fill:#1E90FF,stroke:#00008B,stroke-width:2px
+
+%% Horoscope Flow
+C -->|Request Horoscope| C_H
+C_H -->|POST| D_H
+D_H -->|Send Prompt| E
+E -->|Horoscope JSON| D_H
+D_H --> C_H
+C_H -->|Update UI| C
+style C_H fill:#FF6347,stroke:#8B0000,stroke-width:2px
+
+%% Chat Flow
+C --> C_Chat
+style C_Chat fill:#20B2AA,stroke:#006666,stroke-width:2px
+```
 For Hardware:
 
 # Schematic & Circuit
